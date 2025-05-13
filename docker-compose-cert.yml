@@ -1,0 +1,9 @@
+services:
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ../data/certbot:/etc/letsencrypt
+      - ../data/varlib:/var/lib/letsencrypt
+      - ../data/www:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot --email testnet102@gmail.com --agree-tos --no-eff-email -d qms.phuongchau.vn -d www.qms.phuongchau.vn
