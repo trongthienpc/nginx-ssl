@@ -7,7 +7,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ceritificate:/etc/nginx/certs:ro
+      - ./certificate:/etc/nginx/ssl/live/layso.phuongchau.com:ro
     networks:
       - hospital-queue-management-system_backend
 

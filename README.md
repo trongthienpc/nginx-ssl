@@ -1,110 +1,120 @@
-# Hướng dẫn Cài đặt NGINX với SSL (Let's Encrypt)
+# Nginx SSL Proxy Configuration
 
-## Mục lục
+Cấu hình Nginx Proxy với SSL cho hệ thống quản lý hàng đợi bệnh viện.
 
-- [Yêu cầu hệ thống](#yêu-cầu-hệ-thống)
-- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
-- [Các bước thực hiện](#các-bước-thực-hiện)
-- [Cấu hình Crontab](#cấu-hình-crontab)
-- [Xử lý sự cố](#xử-lý-sự-cố)
+## Tính năng
 
-## Yêu cầu hệ thống
+- Proxy ngược cho ứng dụng Next.js và API
+- Hỗ trợ SSL/TLS với Let's Encrypt
+- Tối ưu hiệu suất với proxy buffer và gzip compression
+- Cấu hình bảo mật với các header HTTP security
+- Tự động chuyển hướng HTTP sang HTTPS
 
-- Docker và Docker Compose đã được cài đặt
-- Domain đã trỏ về IP server
-- Port 80 và 443 đã được mở
+## Yêu cầu
+
+- Docker và Docker Compose
+- Domain đã được cấu hình DNS trỏ về server
+- Chứng chỉ SSL từ Let's Encrypt
 
 ## Cấu trúc thư mục
 
 ```
-nginx-ssl/
-├── data/
-│   ├── certbot/     # Chứa chứng chỉ SSL
-│   ├── varlib/      # Dữ liệu Let's Encrypt
-│   └── www/         # Web root cho xác thực domain
-├── docker-compose.yml           # File cấu hình Docker chính
-├── docker-compose-cert.yml      # File cấu hình cho việc lấy chứng chỉ
-├── nginx.conf                   # File cấu hình NGINX
-└── renew-ssl.sh                # Script gia hạn SSL
+.
+├── docker-compose.yml    # Cấu hình Docker Compose
+├── nginx.conf           # Cấu hình Nginx
+├── renew-ssl.sh         # Script gia hạn chứng chỉ SSL
+└── certificate/         # Thư mục chứa chứng chỉ SSL
 ```
 
-## Các bước thực hiện
+## Cài đặt
 
-### 1. Tạo cấu trúc thư mục
+1. Clone repository:
 
 ```bash
-mkdir -p data/{certbot,varlib,www}
+git clone <repository-url>
+cd nginx-ssl
 ```
 
-### 2. Khởi tạo NGINX
+2. Đặt chứng chỉ SSL vào thư mục `certificate/`:
+
+- `fullchain.pem`
+- `privkey.pem`
+- `chain.pem`
+
+3. Khởi động container:
 
 ```bash
 docker compose up -d
 ```
 
-### 3. Lấy chứng chỉ SSL
+## Cấu hình
 
-Thay đổi domain và email trong file `docker-compose-cert.yml` theo nhu cầu, sau đó chạy:
+### SSL/TLS
 
-```bash
-docker compose -f docker-compose-cert.yml run --rm certbot
-```
+- Sử dụng TLS 1.2 và 1.3
+- Tối ưu cipher suites
+- OCSP Stapling được bật
+- Strict Transport Security (HSTS)
 
-### 4. Kiểm tra cài đặt
+### Proxy Buffer
 
-- Truy cập website qua HTTPS
-- Kiểm tra chứng chỉ SSL trong trình duyệt
+- Client body buffer: 10K
+- Client header buffer: 1K
+- Client max body size: 8M
+- Proxy buffer size: 128K
 
-## Cấu hình Crontab
+### Gzip Compression
 
-### 1. Cấp quyền thực thi cho script gia hạn
+- Nén các loại file phổ biến (text, CSS, JS, JSON)
+- Mức độ nén: 6
+- Kích thước buffer: 16 8k
 
-```bash
-chmod +x renew-ssl.sh
-```
+### Security Headers
 
-### 2. Mở crontab editor
+- HSTS
+- X-Content-Type-Options
+- X-Frame-Options
+- X-XSS-Protection
 
-```bash
-crontab -e
-```
+## Gia hạn chứng chỉ SSL
 
-### 3. Thêm lệnh tự động gia hạn (chạy vào 3:00 AM mỗi ngày)
-
-```bash
-0 3 * * * /path/to/nginx-ssl/renew-ssl.sh >> /path/to/nginx-ssl/renew.log 2>&1
-```
-
-## Xử lý sự cố
-
-### Lỗi khi gia hạn SSL
-
-1. Kiểm tra log:
+Chạy script `renew-ssl.sh` để gia hạn chứng chỉ SSL:
 
 ```bash
-cat renew.log
+./renew-ssl.sh
 ```
 
-2. Đảm bảo NGINX đang chạy:
+## Kiểm tra trạng thái
+
+Kiểm tra container đang chạy:
 
 ```bash
 docker compose ps
 ```
 
-3. Kiểm tra cấu hình NGINX:
+Xem logs của Nginx:
 
 ```bash
-docker compose exec nginx nginx -t
+docker compose logs nginx
 ```
 
-### Lỗi kết nối HTTPS
+## Bảo trì
 
-1. Kiểm tra file cấu hình nginx.conf
-2. Đảm bảo các file chứng chỉ tồn tại trong thư mục data/certbot
-3. Kiểm tra quyền truy cập các file chứng chỉ
+1. Khởi động lại Nginx:
 
-### Lưu ý quan trọng
+```bash
+docker compose restart nginx
+```
 
-- Luôn backup thư mục data/certbot trước khi thực hiện các thay đổi lớn
-- Theo dõi log gia hạn SSL định kỳ
-- Đảm bảo đủ dung lượng ổ đĩa cho việc lưu trữ log và chứng chỉ
+2. Reload cấu hình Nginx:
+
+```bash
+docker compose exec nginx nginx -s reload
+```
+
+## Lưu ý bảo mật
+
+- Luôn giữ các container và image được cập nhật
+- Kiểm tra định kỳ các log để phát hiện vấn đề
+- Đảm bảo quyền truy cập thư mục chứng chỉ SSL được cấu hình đúng
+- Thường xuyên cập nhật các security headers theo khuyến nghị mới nhất
